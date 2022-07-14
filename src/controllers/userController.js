@@ -1,6 +1,6 @@
 const userModel = require("../models/userModel");
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
+const aws = require('../aws/aws')
 const mongoose = require('mongoose')
 const isValid = function (value) {
     if (typeof value === 'undefined' || value === null) return false
@@ -17,7 +17,7 @@ const isValidObjectId = function (objectId) {
 }
 
 // ================================createapi======================
-const createUser = async function (req, res) {
+const registerUser = async function (req, res) {
     try {
         let data = req.body
 
@@ -25,53 +25,67 @@ const createUser = async function (req, res) {
             return res.status(400).send({ status: false, msg: "userDetails must be provided" });
         }
 
-        let { username, email, password, DOB } = data // destructuring
+        let { First_name,Last_name, Email, Password,Age, Profile_pic,} = data // destructuring
 
         //---------titleValidation
-        if (!isValid(username)) {
-            return res.status(400).send({ status: false, message: 'username is required' })
+        if (!isValid(First_name)) {
+            return res.status(400).send({ status: false, message: 'First_name is required' })
         }
 
         //------match username with regex
-        if (!(/^[a-zA-Z]+(\s[a-zA-Z]+)?$/).test(username)) {
-            return res.status(400).send({ status: false, msg: "Please use valid type of username" })
+        if (!(/^[a-zA-Z]+(\s[a-zA-Z]+)?$/).test(First_name)) {
+            return res.status(400).send({ status: false, msg: "Please use valid type of First_name" })
         }
-
-
-         //check if phone is already in use
-        let duplicateUsername = await userModel.findOne({ username: username })
-        if (duplicateUsername) {
-            return res.status(400).send({ status: false, msg: 'username  already exists' })
+         
+        if (!isValid(Last_name)) {
+            return res.status(400).send({ status: false, message: 'Last_name is required' })
+        }
+        if (!(/^[a-zA-Z]+(\s[a-zA-Z]+)?$/).test(Last_name)) {
+            return res.status(400).send({ status: false, msg: "Please use valid type of Last_name" })
         }
 
         //-----emailValidation
-        if (!isValid(email)) {
+        if (!isValid(Email)) {
             return res.status(400).send({ status: false, message: 'Email is required' })
         }
 
         //-------match email with regex
-        if (!(/^\w+@[a-zA-Z_]+?\.[a-zA-Z]{2,20}$/).test(email)) {
+        if (!(/^\w+@[a-zA-Z_]+?\.[a-zA-Z]{2,20}$/).test(Email)) {
             return res.status(400).send({ status: false, msg: "Please provide a email in correct format" })
         }
         //check if email is already in use
-        let duplicateEmail = await userModel.findOne({ email: email })
+        let duplicateEmail = await userModel.findOne({ Email: Email })
         if (duplicateEmail) {
-            return res.status(400).send({ status: false, msg: 'email already exists' })
+            return res.status(400).send({ status: false, msg: 'Email already exists' })
         }
 
         //--------passwordValidation
 
-        if (!isValid(password)) {
-            return res.status(400).send({ status: false, message: 'password is required' })
+        if (!isValid(Password)) {
+            return res.status(400).send({ status: false, message: 'Password is required' })
         }
-        if (!(/^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,15}$/.test(data.password))) {
+        if (!(/^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,15}$/.test(data.Password))) {
             return res.status(400).send({ status: false, msg: "Please use password first letter in uppercase reamin lowercase and number with min. 8 length" })
         }
-        let encryptPassword = await bcrypt.hash(password, 12)
-        if(!isValid(DOB)){
-            return res.status(400).send({ status: false, msg: " DOB is required"})
+        if (!isValid(Age)) {
+            return res.status(400).send({ status: false, message: 'Age is required' })
         }
-        let userData = { username, email, password: encryptPassword, DOB }
+        if(isNaN.Age){
+            return res.status(400).send({ status: false, msg: 'Age should be in Number' })
+        }
+
+        let files = req.files;
+        if (files && files.length > 0) {
+            let uploadedFileURL = await aws.uploadFile(files[0]);
+            Profile_pic = uploadedFileURL
+        }
+        else {
+            return res.status(400).send({ status: false, msg: "No Profile_pic found" });
+        }
+
+            
+        
+        let userData = { First_name,Last_name, Email, Password, Age, Profile_pic }
 
         //-------userCreation
 
@@ -96,28 +110,23 @@ const login = async function (req, res) {
         }
 
 
-        const{email, password} = data;
-        if (!email) {
+        const{Email, Password} = data;
+        if (!Email) {
             return res.status(400).send({ status: false, message: "Plz Enter Email In Body !!!" });
         }
-        const findData = await userModel.findOne({ email }).select({ email: 1, password: 1 ,username:1});
+        const findData = await userModel.findOne({ Email }).select({ email: 1, password: 1});
         if (!findData) {
             return res.status(600).send({ status: false, message: "invalid credidential !!!" });
         }
 
-        if (!password) {
+        if (!Password) {
             return res.status(400).send({ status: false, message: "Plz Enter Password In Body !!!" });
         }
-        const match = await bcrypt.compare(password, findData.password);
-        if (!match) {
-            return res.status(600).send({ status: false, message: "invalid password !!!" });
-        }
+    
         //token generation
         const userId = findData._id;
-        const username = findData.username
         const token = jwt.sign({
             userId: userId,
-            username:username
         },
             "GauravTripathi", { expiresIn: "24H" }
         );
@@ -125,14 +134,14 @@ const login = async function (req, res) {
         res.status(200).send({
             status: true,
             message: "User login successfull",
-            data: { userId: userId,username:username, token: token }
+            data: { userId: userId, token: token }
         });
     } catch (err) {
         res.status(500).send({ status: false, msg: err.message });
     }
 };
 
-// update password api
+// update user details
 
 const update = async function (req, res) {
     try {
@@ -157,22 +166,63 @@ const update = async function (req, res) {
          }
  
          // Destructuring
-         let { password } = data;
+         let { First_name,Last_name,Email,Password,Age,Profile_pic } = data;
  
          let updatedData = {}
-           // Updating of password
-        if (password) {
-            if (!isValid(password)) {
-                return res.status(400).send({ status: false, message: 'password is required' })
+         if(First_name){
+            if (!(/^[a-zA-Z]+(\s[a-zA-Z]+)?$/).test(First_name)) {
+                return res.status(400).send({ status: false, msg: "Please use valid type of First_name" })
             }
-            if (!(/^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,15}$/.test(data.password))) {
+           updatedData['First_name'] = First_name
+            
+         }
+         if(Last_name){
+            if (!(/^[a-zA-Z]+(\s[a-zA-Z]+)?$/).test(Last_name)) {
+                return res.status(400).send({ status: false, msg: "Please use valid type of Last_name" })
+            }
+           updatedData['Last_name'] = Last_name
+            
+         }
+         if(Email){
+            if (!(/^\w+@[a-zA-Z_]+?\.[a-zA-Z]{2,20}$/).test(Email)) {
+                return res.status(400).send({ status: false, msg: "Please provide a email in correct format" })
+            }
+            //check if email is already in use
+            let duplicateEmail = await userModel.findOne({ Email: Email })
+            if (duplicateEmail) {
+                return res.status(400).send({ status: false, msg: 'Email already exists' })
+            }
+            updatedData['Email'] = Email
+
+         }
+
+           // Updating of password
+        if (Password) {
+            if (!(/^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,15}$/.test(data.Password))) {
                 return res.status(400).send({ status: false, msg: "Please use first letter in uppercase, lowercase and number with min. 8 length" })
             }
-            const encrypt = await bcrypt.hash(password, 12)
-            updatedData['password'] = encrypt
+    
+            updatedData['Password'] = Password
         }
+        if(Age){
+            if(isNaN.Age){
+                return res.status(400).send({ status: false, msg: 'Age should be in Number' })
+            }
+            updatedData['Age'] = Age
+        }
+        let files = req.files;
+        if (files && files.length > 0) {
+            let uploadedFileURL = await aws.uploadFile(files[0]);
+            Profile_pic = uploadedFileURL
+            updatedData['Profile_pic'] = Profile_pic
+        }
+        else {
+            return res.status(400).send({ status: false, msg: "No Profile_pic found" });
+        }
+
+
         const updated = await userModel.findOneAndUpdate({ _id: userId }, updatedData, { new: true })
-        return res.status(200).send({ status: true,msg:"password updated successsfully", data: updated })
+        return res.status(200).send({ status: true,msg:"User details updated successsfully", data: updated })
     }
     catch (err) {
         res.status(500).send({ msg: "Error", error: err.message })
@@ -180,4 +230,4 @@ const update = async function (req, res) {
 };
     
 
-module.exports ={createUser,login,update}
+module.exports ={registerUser,login,update}

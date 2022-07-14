@@ -2,10 +2,11 @@ const express = require('express')
 const route =  require('./routes/route')
 const bodyParser = require('body-parser')
 const mongoose = require('mongoose')
+const multer = require('multer')
 const app =express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended:true}));
-
+app.use(multer().any())
 //Database connection setup 
 
 mongoose.connect("mongodb+srv://gtgaurav:Wp2gKNWXbHDifb5n@cluster0.9p9yl.mongodb.net/assignment4455-DB" ,
