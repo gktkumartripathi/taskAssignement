@@ -6,9 +6,11 @@ const router = express.Router();
 
 //=========================user Api=========================
 
-router.post('/register',userController.createUser)
+router.post('/register',userController.registerUser)
 router.post("/login", userController.login);
+router.get('/getUser',userController.getUsersDetails)
 router.put("/updatePassword/:userId",middleware.auth, userController.update)
+router.delete('//users/:userId',middleware.auth,userController.deleteById)
 
 
 module.exports = router;

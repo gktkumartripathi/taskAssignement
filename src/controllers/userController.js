@@ -70,7 +70,7 @@ const registerUser = async function (req, res) {
         if (!isValid(Age)) {
             return res.status(400).send({ status: false, message: 'Age is required' })
         }
-        if(isNaN.Age){
+        if(isNaN(Age)==true){
             return res.status(400).send({ status: false, msg: 'Age should be in Number' })
         }
 
@@ -141,6 +141,14 @@ const login = async function (req, res) {
     }
 };
 
+   const getUsersDetails = async function(req,res){
+    const details = await userModel.find()
+    if(details){
+    return res.status(200).send({status:true,data:details})
+   } else {
+    return res.status(404).send({status:false,msg:"no record found"})
+   }
+}
 // update user details
 
 const update = async function (req, res) {
@@ -205,7 +213,7 @@ const update = async function (req, res) {
             updatedData['Password'] = Password
         }
         if(Age){
-            if(isNaN.Age){
+            if(isNaN(Age)==true){
                 return res.status(400).send({ status: false, msg: 'Age should be in Number' })
             }
             updatedData['Age'] = Age
@@ -228,6 +236,38 @@ const update = async function (req, res) {
         res.status(500).send({ msg: "Error", error: err.message })
     }
 };
+
+const deleteById = async function (req, res) {
+    try {
+
+        const userId = req.params.userId
+
+        if (!isValidObjectId(userId)) {
+            return res.status(400).send({ status: false, msg: `this ${userId} is not valid` })
+        }
+
+        let deletedUser = await userModel.findById({ _id: userId})
+        if (!deletedUser) {
+            return res.status(404).send({ status: false, msg: `this ${userId} is not exist in db` })
+        }
+        if (userId !== req['userId']) {
+            return res.status(401).send({ status: false, msg: "Unauthorised access" })
+        }
+
+        if (deletedUser.isDeleted !== false) {
+            return res.status(404).send({ status: false, msg: `this ${userId} is Not Found` })
+        }
+
+        await userModel.findByIdAndUpdate({ _id: userId }, { $set: { isDeleted: true } }, { new: true })
+
+        return res.status(200).send({ status: true, msg: "successfully deleted" })
+
+    }
+
+    catch (err) {
+        res.status(500).send({ msg: "Error", error: err.message })
+    }
+};
     
 
-module.exports ={registerUser,login,update}
+module.exports ={registerUser,login, getUsersDetails,update,deleteById}
