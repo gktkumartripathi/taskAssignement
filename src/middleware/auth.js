@@ -15,7 +15,7 @@ const auth =  async (req, res, next) => {
             return res.status(403).send({ status: false, message: `Invalid authentication token in request` });
         }
 
-        req['userId'] = decoded.userId
+        req.Email = decoded.Email
 
         next()
     } catch (error) {
